@@ -26,6 +26,7 @@ export default function VideoPreview({
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const [activeClipId, setActiveClipId] = useState<string | null>(null)
 
   useEffect(() => {
     if (!videoRef.current) return
@@ -35,24 +36,52 @@ export default function VideoPreview({
     video.playbackRate = playbackSpeed
 
     if (isPlaying) {
-      video.play()
+      const playPromise = video.play()
+      if (playPromise !== undefined) {
+        playPromise.catch((error) => {
+          console.log("[v0] Video play failed:", error)
+        })
+      }
     } else {
       video.pause()
     }
   }, [isPlaying, volume, playbackSpeed])
 
   useEffect(() => {
-    // Find the clip that should be playing at currentTime
     const activeClip = clips.find(
       (clip) => currentTime >= clip.startTime && currentTime < clip.startTime + clip.duration,
     )
 
-    if (activeClip && videoRef.current) {
-      const relativeTime = currentTime - activeClip.startTime + activeClip.trimStart
-      videoRef.current.src = activeClip.url
-      videoRef.current.currentTime = relativeTime
+    if (!activeClip || !videoRef.current) return
+
+    const video = videoRef.current
+    const relativeTime = currentTime - activeClip.startTime + activeClip.trimStart
+
+    if (activeClip.id !== activeClipId) {
+      console.log("[v0] Switching to clip:", activeClip.name)
+      video.src = activeClip.url
+      setActiveClipId(activeClip.id)
+
+      video.onloadeddata = () => {
+        console.log("[v0] Video loaded successfully, dimensions:", video.videoWidth, "x", video.videoHeight)
+        video.currentTime = relativeTime
+        if (isPlaying) {
+          video.play().catch((error) => {
+            console.log("[v0] Video play failed after load:", error)
+          })
+        }
+      }
+
+      video.onerror = (e) => {
+        console.log("[v0] Video load error:", e)
+      }
+    } else {
+      const timeDiff = Math.abs(video.currentTime - relativeTime)
+      if (timeDiff > 0.5) {
+        video.currentTime = relativeTime
+      }
     }
-  }, [currentTime, clips])
+  }, [currentTime, clips, activeClipId, isPlaying])
 
   const toggleFullscreen = () => {
     if (!containerRef.current) return
@@ -87,7 +116,9 @@ export default function VideoPreview({
         <>
           <video
             ref={videoRef}
-            className="max-h-full max-w-full"
+            className="h-full w-full object-contain"
+            crossOrigin="anonymous"
+            playsInline
             onTimeUpdate={(e) => {
               const video = e.currentTarget
               const activeClip = clips.find(
@@ -97,6 +128,9 @@ export default function VideoPreview({
                 const newTime = activeClip.startTime + (video.currentTime - activeClip.trimStart)
                 onTimeUpdate(newTime)
               }
+            }}
+            onLoadedMetadata={(e) => {
+              console.log("[v0] Video metadata loaded:", e.currentTarget.videoWidth, "x", e.currentTarget.videoHeight)
             }}
           />
           <canvas ref={canvasRef} className="hidden" />
