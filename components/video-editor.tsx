@@ -24,17 +24,9 @@ import Timeline from "@/components/timeline"
 import VideoPreview from "@/components/video-preview"
 import Toolbar from "@/components/toolbar"
 import ExportDialog from "@/components/export-dialog"
-
-export interface VideoClip {
-  id: string
-  name: string
-  url: string
-  duration: number
-  startTime: number
-  trimStart: number
-  trimEnd: number
-  track: number
-}
+import { useRecording } from "@/hooks/use-recording"
+import RecordingControls from "@/components/recording-controls"
+import type { VideoClip } from "@/components/types"
 
 export default function VideoEditor() {
   const [clips, setClips] = useState<VideoClip[]>([])
@@ -46,8 +38,10 @@ export default function VideoEditor() {
   const [selectedClipId, setSelectedClipId] = useState<string | null>(null)
   const [exportDialogOpen, setExportDialogOpen] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
-  const [zoom, setZoom] = useState(50) // pixels per second
+  const [zoom, setZoom] = useState(50)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const { isRecording, recordingType, recordingDuration, startRecording, stopRecording, error } = useRecording()
 
   const processVideoFiles = (files: FileList | File[]) => {
     Array.from(files).forEach((file) => {
@@ -267,8 +261,7 @@ export default function VideoEditor() {
   }
 
   const handleLoadSample = () => {
-    // Using Big Buck Bunny - a free test video from Blender Foundation
-    const sampleUrl = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
+    const sampleUrl = "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4"
     const video = document.createElement("video")
     video.src = sampleUrl
     video.crossOrigin = "anonymous"
@@ -276,7 +269,7 @@ export default function VideoEditor() {
     video.onloadedmetadata = () => {
       const newClip: VideoClip = {
         id: Math.random().toString(36).substr(2, 9),
-        name: "Sample Video - Big Buck Bunny.mp4",
+        name: "Sample Video - Sintel.mp4",
         url: sampleUrl,
         duration: video.duration,
         startTime: duration,
@@ -308,6 +301,30 @@ export default function VideoEditor() {
     }
   }
 
+  const handleStartScreenRecording = async () => {
+    await startRecording("screen")
+  }
+
+  const handleStartWebcamRecording = async () => {
+    await startRecording("webcam")
+  }
+
+  const handleStopRecording = async () => {
+    const blob = await stopRecording()
+    if (blob) {
+      // Create a file from the blob and add it to timeline
+      const file = new File([blob], `Recording-${Date.now()}.webm`, { type: "video/webm" })
+      processVideoFiles([file])
+    }
+  }
+
+  useEffect(() => {
+    if (error) {
+      console.error("[v0] Recording error:", error)
+      // You could add a toast notification here
+    }
+  }, [error])
+
   return (
     <div
       className="flex h-screen flex-col bg-background"
@@ -315,6 +332,13 @@ export default function VideoEditor() {
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
+      <RecordingControls
+        isRecording={isRecording}
+        recordingType={recordingType}
+        recordingDuration={recordingDuration}
+        onStop={handleStopRecording}
+      />
+
       {isDragging && (
         <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
           <div className="flex flex-col items-center gap-4 rounded-lg border-2 border-dashed border-primary bg-card p-12">
@@ -350,11 +374,11 @@ export default function VideoEditor() {
             <Video className="mr-2 h-4 w-4" />
             Load Sample
           </Button>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={handleStartScreenRecording} disabled={isRecording}>
             <Monitor className="mr-2 h-4 w-4" />
             Screen
           </Button>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={handleStartWebcamRecording} disabled={isRecording}>
             <Webcam className="mr-2 h-4 w-4" />
             Webcam
           </Button>

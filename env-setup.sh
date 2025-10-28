@@ -20,4 +20,3 @@ export LSCOLORS=GxFxCxDxBxegedabagaced
 
 # Success message
 echo "✅ Environment configured for Claude Code"
-

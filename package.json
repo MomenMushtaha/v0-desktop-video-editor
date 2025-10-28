@@ -8,8 +8,8 @@
     "lint": "eslint .",
     "start": "next start",
     "tauri": "tauri",
-    "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build"
+    "tauri:build": "tauri build",
+    "tauri:dev": "tauri dev"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

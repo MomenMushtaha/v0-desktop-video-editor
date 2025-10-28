@@ -54,7 +54,7 @@ Must have ALL of these:
   - FFmpeg-based video export ⏳
 
 ### Data Model
-```typescript
+\`\`\`typescript
 interface VideoClip {
   id: string          // Unique identifier
   name: string        // Original filename
@@ -65,7 +65,7 @@ interface VideoClip {
   trimEnd: number     // Out point (seconds)
   track: number       // Track number (multi-track support)
 }
-```
+\`\`\`
 
 ## Core Features Status
 
@@ -114,7 +114,7 @@ interface VideoClip {
 ## Critical Layout & Styling Rules
 
 ### Video Container Hierarchy (MUST MAINTAIN)
-```tsx
+\`\`\`tsx
 // video-editor.tsx - Wrapper with flex space
 <div className="flex flex-1 flex-col min-h-0 overflow-hidden">
   <div className="flex-1 min-h-0">
@@ -126,7 +126,7 @@ interface VideoClip {
 <div className="relative flex h-full w-full items-center justify-center overflow-hidden bg-black">
   <video className="w-full h-full object-contain" />
 </div>
-```
+\`\`\`
 
 **Why this matters:**
 - `min-h-0` prevents flex items from refusing to shrink
