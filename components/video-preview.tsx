@@ -116,7 +116,7 @@ export default function VideoPreview({
         <>
           <video
             ref={videoRef}
-            className="max-h-full max-w-full object-contain"
+            className="h-full w-full object-contain"
             crossOrigin="anonymous"
             playsInline
             onTimeUpdate={(e) => {
