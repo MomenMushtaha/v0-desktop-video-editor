@@ -376,15 +376,17 @@ export default function VideoEditor() {
       <div className="flex flex-1 overflow-hidden">
         <Toolbar onSplit={handleSplitClip} selectedClipId={selectedClipId} />
 
-        <div className="flex flex-1 flex-col">
-          <VideoPreview
-            clips={clips}
-            currentTime={currentTime}
-            isPlaying={isPlaying}
-            volume={volume}
-            playbackSpeed={playbackSpeed}
-            onTimeUpdate={setCurrentTime}
-          />
+        <div className="flex flex-1 flex-col min-h-0 overflow-hidden">
+          <div className="flex-1 min-h-0">
+            <VideoPreview
+              clips={clips}
+              currentTime={currentTime}
+              isPlaying={isPlaying}
+              volume={volume}
+              playbackSpeed={playbackSpeed}
+              onTimeUpdate={setCurrentTime}
+            />
+          </div>
 
           <div className="border-t border-border bg-card p-4">
             <div className="mb-4 flex items-center gap-4">

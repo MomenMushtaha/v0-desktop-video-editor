@@ -105,7 +105,7 @@ export default function VideoPreview({
   }, [])
 
   return (
-    <div ref={containerRef} className="relative flex flex-1 items-center justify-center bg-black">
+    <div ref={containerRef} className="relative flex h-full w-full items-center justify-center overflow-hidden bg-black">
       {clips.length === 0 ? (
         <div className="text-center">
           <div className="mb-4 text-6xl">🎬</div>
@@ -116,7 +116,7 @@ export default function VideoPreview({
         <>
           <video
             ref={videoRef}
-            className="h-full w-full object-contain"
+            className="w-full h-full object-contain"
             crossOrigin="anonymous"
             playsInline
             onTimeUpdate={(e) => {
