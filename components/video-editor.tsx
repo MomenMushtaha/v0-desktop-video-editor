@@ -374,14 +374,38 @@ export default function VideoEditor() {
             <Video className="mr-2 h-4 w-4" />
             Load Sample
           </Button>
-          <Button variant="outline" size="sm" onClick={handleStartScreenRecording} disabled={isRecording}>
-            <Monitor className="mr-2 h-4 w-4" />
-            Screen
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleStartWebcamRecording} disabled={isRecording}>
-            <Webcam className="mr-2 h-4 w-4" />
-            Webcam
-          </Button>
+          {isRecording && recordingType === "screen" ? (
+            <Button variant="destructive" size="sm" onClick={handleStopRecording} className="animate-pulse">
+              <Monitor className="mr-2 h-4 w-4" />
+              Stop Screen
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleStartScreenRecording}
+              disabled={isRecording && recordingType !== "screen"}
+            >
+              <Monitor className="mr-2 h-4 w-4" />
+              Screen
+            </Button>
+          )}
+          {isRecording && recordingType === "webcam" ? (
+            <Button variant="destructive" size="sm" onClick={handleStopRecording} className="animate-pulse">
+              <Webcam className="mr-2 h-4 w-4" />
+              Stop Webcam
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleStartWebcamRecording}
+              disabled={isRecording && recordingType !== "webcam"}
+            >
+              <Webcam className="mr-2 h-4 w-4" />
+              Webcam
+            </Button>
+          )}
           <Button size="sm" onClick={handleExport}>
             <Download className="mr-2 h-4 w-4" />
             Export
