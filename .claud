@@ -1,0 +1,208 @@
+# ClipForge - Desktop Video Editor
+**72-Hour Build Challenge**
+
+## Project Mission
+Build a production-grade desktop video editor in 3 days (Oct 27-29, 2024) that handles screen recording, webcam capture, clip import, timeline editing, and video export.
+
+## Deadlines
+- **MVP**: Tuesday, October 28th at 10:59 PM CT
+- **Final Submission**: Wednesday, October 29th at 10:59 PM CT
+
+## MVP Requirements (Hard Gate - Tuesday 10:59 PM CT)
+Must have ALL of these:
+- ✅ Desktop app that launches (Electron or Tauri)
+- ✅ Basic video import (drag & drop or file picker for MP4/MOV)
+- ✅ Simple timeline view showing imported clips
+- ✅ Video preview player that plays imported clips
+- ⏳ Basic trim functionality (set in/out points on a single clip)
+- ⏳ Export to MP4 (even if just one clip)
+- ⏳ Built and packaged as a native app (not just running in dev mode)
+
+## Tech Stack (Current)
+- **Desktop Framework**: Tauri (in progress) - Rust-based, smaller, faster than Electron
+- **Frontend**: Next.js 16.0.0 with React 19.2.0
+- **Styling**: Tailwind CSS 4.1.9
+- **UI Components**: Radix UI, Lucide React
+- **Media Processing**: FFmpeg (for export), HTML5 Video API (for preview)
+
+## Project Structure
+
+### Core Components
+- **`components/video-editor.tsx`** (486 lines) - Main controller
+  - Video import via drag & drop and file picker ✅
+  - Clip management and timeline state ✅
+  - Playback controls ✅
+  - Keyboard shortcuts (Space, I, O, arrow keys) ✅
+
+- **`components/video-preview.tsx`** (154 lines) - Video display
+  - HTML5 video playback with synchronized clip switching ✅
+  - Fullscreen support ✅
+  - Volume and playback speed controls ✅
+  - **Layout**: Uses `h-full w-full object-contain` with proper flex hierarchy
+
+- **`components/timeline.tsx`** - Timeline visualization
+  - Visual timeline with zoom controls ✅
+  - Clip dragging and arrangement ✅
+  - Trim handles for in/out points ✅
+  - Split functionality ✅
+
+- **`components/toolbar.tsx`** - Editing tools
+  - Split, copy, delete operations ✅
+
+- **`components/export-dialog.tsx`** - Export configuration
+  - Resolution presets (4K, 1080p, 720p, 480p) ✅
+  - FFmpeg-based video export ⏳
+
+### Data Model
+```typescript
+interface VideoClip {
+  id: string          // Unique identifier
+  name: string        // Original filename
+  url: string         // Blob URL from URL.createObjectURL()
+  duration: number    // Full duration in seconds
+  startTime: number   // Timeline position
+  trimStart: number   // In point (seconds)
+  trimEnd: number     // Out point (seconds)
+  track: number       // Track number (multi-track support)
+}
+```
+
+## Core Features Status
+
+### ✅ Import & Media Management
+- [x] Drag and drop video files (MP4, MOV, WebM)
+- [x] File picker for importing
+- [x] Media library showing imported clips
+- [x] Clip metadata display
+
+### ✅ Timeline Editor
+- [x] Visual timeline with playhead
+- [x] Drag clips onto timeline
+- [x] Arrange clips in sequence
+- [x] Trim clips (in/out points via I/O keys)
+- [x] Split clips at playhead
+- [x] Delete clips
+- [x] Zoom in/out controls
+- [x] Multiple track support (architecture ready)
+
+### ✅ Preview & Playback
+- [x] Real-time preview
+- [x] Play/pause controls
+- [x] Scrubbing via slider
+- [x] Audio synchronized playback
+- [x] Playback speed (0.25x - 2x)
+
+### ⏳ Recording Features (TODO - Priority)
+- [ ] Screen recording (full screen or window)
+- [ ] Webcam recording
+- [ ] Simultaneous screen + webcam (PiP)
+- [ ] Audio capture from microphone
+- [ ] Save recordings directly to timeline
+
+**Implementation Approach**:
+- For Tauri: Use Rust commands with platform-specific APIs
+- Alternative: `navigator.mediaDevices.getDisplayMedia()` for screen
+- Webcam: `navigator.mediaDevices.getUserMedia()`
+
+### ⏳ Export & Sharing (TODO - Priority)
+- [x] Export UI with resolution options
+- [ ] FFmpeg integration for actual export
+- [ ] Progress indicator
+- [ ] Save to local filesystem
+- [ ] Bonus: Cloud upload (Google Drive, Dropbox)
+
+## Critical Layout & Styling Rules
+
+### Video Container Hierarchy (MUST MAINTAIN)
+```tsx
+// video-editor.tsx - Wrapper with flex space
+<div className="flex flex-1 flex-col min-h-0 overflow-hidden">
+  <div className="flex-1 min-h-0">
+    <VideoPreview ... />
+  </div>
+</div>
+
+// video-preview.tsx - Container with explicit dimensions
+<div className="relative flex h-full w-full items-center justify-center overflow-hidden bg-black">
+  <video className="w-full h-full object-contain" />
+</div>
+```
+
+**Why this matters:**
+- `min-h-0` prevents flex items from refusing to shrink
+- `h-full w-full` ensures proper filling
+- `object-contain` maintains aspect ratio
+- `overflow-hidden` prevents layout breaks
+
+### Known Issue & Solution
+**Issue**: Video only displays in fullscreen, black screen in normal view
+**Solution**: Proper flex hierarchy with `min-h-0` and wrapper div with `flex-1`
+
+## Development Strategy (72-Hour Plan)
+
+### Phase 1: MVP Completion (Now - Tuesday 10:59 PM)
+1. ✅ Import working
+2. ✅ Timeline functional
+3. ✅ Preview working
+4. ⏳ Trim functionality refined
+5. ⏳ FFmpeg export implementation
+6. ⏳ Tauri packaging and testing
+
+### Phase 2: Recording Features (Wednesday)
+1. Screen recording implementation
+2. Webcam recording
+3. Combined screen + webcam (PiP)
+4. Audio capture
+
+### Phase 3: Polish & Package (Wednesday Evening)
+1. Testing all features
+2. Build distributable
+3. Demo video recording
+4. README documentation
+
+## Testing Scenarios
+Must pass:
+- [ ] Record 30-second screen capture → timeline
+- [x] Import 3 clips and arrange in sequence
+- [x] Trim and split clips
+- [ ] Export 2-minute video with multiple clips
+- [ ] Screen + webcam overlay
+- [ ] Test on macOS (primary) and Windows if possible
+
+## Performance Targets
+- Timeline responsive with 10+ clips ✅
+- Preview at 30 fps minimum ✅
+- Export completes without crashes ⏳
+- App launch under 5 seconds ⏳
+- No memory leaks (15+ minute test) ⏳
+
+## Submission Requirements (Wednesday 10:59 PM CT)
+- [ ] GitHub repository with setup instructions
+- [ ] Demo video (3-5 minutes)
+- [ ] Packaged desktop app (download link)
+- [ ] README with build instructions
+
+## Build Strategy Priorities
+1. ✅ Import and Preview validated
+2. ✅ Timeline core interface built
+3. ⏳ Export implementation (HIGH PRIORITY)
+4. ⏳ Recording features (HIGH PRIORITY)
+5. ⏳ Package and test on real hardware (CRITICAL)
+
+## Key Principles
+- **Velocity over perfection**: Working > Feature-rich but broken
+- **Test early**: Export and packaging should be tested ASAP
+- **Core loop focus**: Record → Import → Arrange → Export
+- **Just submit**: Don't miss deadlines
+
+## Next Immediate Tasks
+1. Complete Tauri setup and initialization
+2. Implement FFmpeg export functionality
+3. Add screen recording capability
+4. Add webcam recording capability
+5. Package as native app and test
+6. Create demo video
+
+---
+
+**Remember**: A simple, working video editor beats a feature-rich app that crashes. Focus on the core loop.
