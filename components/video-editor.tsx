@@ -5,6 +5,7 @@ import type React from "react"
 import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Slider } from "@/components/ui/slider"
+import { useToast } from "@/hooks/use-toast"
 import {
   Play,
   Pause,
@@ -41,6 +42,7 @@ export default function VideoEditor() {
   const [zoom, setZoom] = useState(50)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  const { toast } = useToast()
   const { isRecording, recordingType, recordingDuration, startRecording, stopRecording, error } = useRecording()
 
   const processVideoFiles = (files: FileList | File[]) => {
@@ -321,9 +323,14 @@ export default function VideoEditor() {
   useEffect(() => {
     if (error) {
       console.error("[v0] Recording error:", error)
-      // You could add a toast notification here
+      toast({
+        title: "Recording Not Available in Preview",
+        description:
+          "Screen and webcam recording features only work in the full Tauri desktop app. Build and run the app locally to use recording features.",
+        variant: "destructive",
+      })
     }
-  }, [error])
+  }, [error, toast])
 
   return (
     <div
