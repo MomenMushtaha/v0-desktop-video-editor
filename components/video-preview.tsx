@@ -26,6 +26,38 @@ export default function VideoPreview({
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const activeClipIdRef = useRef<string | null>(null)
+
+  const setVideoPlaybackPosition = (clip: VideoClip, shouldPlay: boolean) => {
+    const video = videoRef.current
+    if (!video) return
+
+    const relativeTime = Math.min(
+      Math.max(currentTime - clip.startTime, 0),
+      clip.trimEnd - clip.trimStart,
+    )
+    const desiredTime = clip.trimStart + relativeTime
+
+    if (video.readyState >= 1) {
+      if (Math.abs(video.currentTime - desiredTime) > 0.05) {
+        video.currentTime = desiredTime
+      }
+      if (shouldPlay) {
+        void video.play().catch(() => {})
+      }
+      return
+    }
+
+    const handleLoadedMetadata = () => {
+      video.currentTime = desiredTime
+      if (shouldPlay) {
+        void video.play().catch(() => {})
+      }
+    }
+
+    video.addEventListener("loadedmetadata", handleLoadedMetadata, { once: true })
+    video.load()
+  }
 
   useEffect(() => {
     if (!videoRef.current) return
@@ -47,12 +79,26 @@ export default function VideoPreview({
       (clip) => currentTime >= clip.startTime && currentTime < clip.startTime + clip.duration,
     )
 
-    if (activeClip && videoRef.current) {
-      const relativeTime = currentTime - activeClip.startTime + activeClip.trimStart
-      videoRef.current.src = activeClip.url
-      videoRef.current.currentTime = relativeTime
+    const video = videoRef.current
+    if (!video || !activeClip) {
+      activeClipIdRef.current = null
+      if (video) {
+        video.pause()
+        video.removeAttribute("src")
+        video.load()
+      }
+      return
     }
-  }, [currentTime, clips])
+
+    const isNewClip = activeClipIdRef.current !== activeClip.id
+
+    if (isNewClip) {
+      activeClipIdRef.current = activeClip.id
+      video.src = activeClip.url
+    }
+
+    setVideoPlaybackPosition(activeClip, isPlaying && isNewClip)
+  }, [clips, currentTime, isPlaying])
 
   const toggleFullscreen = () => {
     if (!containerRef.current) return
@@ -76,7 +122,10 @@ export default function VideoPreview({
   }, [])
 
   return (
-    <div ref={containerRef} className="relative flex flex-1 items-center justify-center bg-black">
+    <div
+      ref={containerRef}
+      className="relative flex flex-1 items-center justify-center overflow-hidden bg-black"
+    >
       {clips.length === 0 ? (
         <div className="text-center">
           <div className="mb-4 text-6xl">🎬</div>
@@ -87,7 +136,7 @@ export default function VideoPreview({
         <>
           <video
             ref={videoRef}
-            className="max-h-full max-w-full"
+            className="h-full w-full object-contain"
             onTimeUpdate={(e) => {
               const video = e.currentTarget
               const activeClip = clips.find(
