@@ -26,38 +26,7 @@ export default function VideoPreview({
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [isFullscreen, setIsFullscreen] = useState(false)
-  const activeClipIdRef = useRef<string | null>(null)
-
-  const setVideoPlaybackPosition = (clip: VideoClip, shouldPlay: boolean) => {
-    const video = videoRef.current
-    if (!video) return
-
-    const relativeTime = Math.min(
-      Math.max(currentTime - clip.startTime, 0),
-      clip.trimEnd - clip.trimStart,
-    )
-    const desiredTime = clip.trimStart + relativeTime
-
-    if (video.readyState >= 1) {
-      if (Math.abs(video.currentTime - desiredTime) > 0.05) {
-        video.currentTime = desiredTime
-      }
-      if (shouldPlay) {
-        void video.play().catch(() => {})
-      }
-      return
-    }
-
-    const handleLoadedMetadata = () => {
-      video.currentTime = desiredTime
-      if (shouldPlay) {
-        void video.play().catch(() => {})
-      }
-    }
-
-    video.addEventListener("loadedmetadata", handleLoadedMetadata, { once: true })
-    video.load()
-  }
+  const [activeClipId, setActiveClipId] = useState<string | null>(null)
 
   useEffect(() => {
     if (!videoRef.current) return
@@ -67,38 +36,52 @@ export default function VideoPreview({
     video.playbackRate = playbackSpeed
 
     if (isPlaying) {
-      video.play()
+      const playPromise = video.play()
+      if (playPromise !== undefined) {
+        playPromise.catch((error) => {
+          console.log("[v0] Video play failed:", error)
+        })
+      }
     } else {
       video.pause()
     }
   }, [isPlaying, volume, playbackSpeed])
 
   useEffect(() => {
-    // Find the clip that should be playing at currentTime
     const activeClip = clips.find(
       (clip) => currentTime >= clip.startTime && currentTime < clip.startTime + clip.duration,
     )
 
+    if (!activeClip || !videoRef.current) return
+
     const video = videoRef.current
-    if (!video || !activeClip) {
-      activeClipIdRef.current = null
-      if (video) {
-        video.pause()
-        video.removeAttribute("src")
-        video.load()
-      }
-      return
-    }
+    const relativeTime = currentTime - activeClip.startTime + activeClip.trimStart
 
-    const isNewClip = activeClipIdRef.current !== activeClip.id
-
-    if (isNewClip) {
-      activeClipIdRef.current = activeClip.id
+    if (activeClip.id !== activeClipId) {
+      console.log("[v0] Switching to clip:", activeClip.name)
       video.src = activeClip.url
-    }
+      setActiveClipId(activeClip.id)
 
-    setVideoPlaybackPosition(activeClip, isPlaying && isNewClip)
-  }, [clips, currentTime, isPlaying])
+      video.onloadeddata = () => {
+        console.log("[v0] Video loaded successfully, dimensions:", video.videoWidth, "x", video.videoHeight)
+        video.currentTime = relativeTime
+        if (isPlaying) {
+          video.play().catch((error) => {
+            console.log("[v0] Video play failed after load:", error)
+          })
+        }
+      }
+
+      video.onerror = (e) => {
+        console.log("[v0] Video load error:", e)
+      }
+    } else {
+      const timeDiff = Math.abs(video.currentTime - relativeTime)
+      if (timeDiff > 0.5) {
+        video.currentTime = relativeTime
+      }
+    }
+  }, [currentTime, clips, activeClipId, isPlaying])
 
   const toggleFullscreen = () => {
     if (!containerRef.current) return
@@ -137,6 +120,8 @@ export default function VideoPreview({
           <video
             ref={videoRef}
             className="h-full w-full object-contain"
+            crossOrigin="anonymous"
+            playsInline
             onTimeUpdate={(e) => {
               const video = e.currentTarget
               const activeClip = clips.find(
@@ -146,6 +131,9 @@ export default function VideoPreview({
                 const newTime = activeClip.startTime + (video.currentTime - activeClip.trimStart)
                 onTimeUpdate(newTime)
               }
+            }}
+            onLoadedMetadata={(e) => {
+              console.log("[v0] Video metadata loaded:", e.currentTarget.videoWidth, "x", e.currentTarget.videoHeight)
             }}
           />
           <canvas ref={canvasRef} className="hidden" />
