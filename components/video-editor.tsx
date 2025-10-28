@@ -266,6 +266,48 @@ export default function VideoEditor() {
     )
   }
 
+  const handleLoadSample = () => {
+    // Using Big Buck Bunny - a free test video from Blender Foundation
+    const sampleUrl = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
+    const video = document.createElement("video")
+    video.src = sampleUrl
+    video.crossOrigin = "anonymous"
+
+    video.onloadedmetadata = () => {
+      const newClip: VideoClip = {
+        id: Math.random().toString(36).substr(2, 9),
+        name: "Sample Video - Big Buck Bunny.mp4",
+        url: sampleUrl,
+        duration: video.duration,
+        startTime: duration,
+        trimStart: 0,
+        trimEnd: video.duration,
+        track: 0,
+      }
+
+      setClips((prev) => [...prev, newClip])
+      setDuration((prev) => prev + video.duration)
+    }
+
+    video.onerror = () => {
+      // Fallback: create a mock clip with placeholder data if video fails to load
+      const mockDuration = 30
+      const newClip: VideoClip = {
+        id: Math.random().toString(36).substr(2, 9),
+        name: "Sample Video (Mock).mp4",
+        url: "/sample-video-concept.png",
+        duration: mockDuration,
+        startTime: duration,
+        trimStart: 0,
+        trimEnd: mockDuration,
+        track: 0,
+      }
+
+      setClips((prev) => [...prev, newClip])
+      setDuration((prev) => prev + mockDuration)
+    }
+  }
+
   return (
     <div
       className="flex h-screen flex-col bg-background"
@@ -286,14 +328,27 @@ export default function VideoEditor() {
       )}
 
       <header className="flex items-center justify-between border-b border-border bg-card px-4 py-3">
-        <div className="flex items-center gap-2">
+        <button
+          onClick={() => {
+            setClips([])
+            setCurrentTime(0)
+            setDuration(0)
+            setIsPlaying(false)
+            setSelectedClipId(null)
+          }}
+          className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
+        >
           <Video className="h-6 w-6 text-primary" />
           <h1 className="text-xl font-semibold">ClipForge</h1>
-        </div>
+        </button>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
             <Upload className="mr-2 h-4 w-4" />
             Import
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleLoadSample}>
+            <Video className="mr-2 h-4 w-4" />
+            Load Sample
           </Button>
           <Button variant="outline" size="sm">
             <Monitor className="mr-2 h-4 w-4" />
