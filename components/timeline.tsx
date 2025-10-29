@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useRef, useState, useEffect } from "react"
-import type { VideoClip } from "./video-editor"
+import type { VideoClip } from "@/components/types"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { ZoomIn, ZoomOut, Maximize2 } from "lucide-react"
@@ -177,6 +177,9 @@ export default function Timeline({
 
             {clips.map((clip) => {
               const visualDuration = clip.trimEnd - clip.trimStart
+              const clipWidth = visualDuration * pixelsPerSecond
+              const minWidth = 20
+              const showText = clipWidth >= 80
 
               return (
                 <div
@@ -187,7 +190,7 @@ export default function Timeline({
                   )}
                   style={{
                     left: `${clip.startTime * pixelsPerSecond}px`,
-                    width: `${visualDuration * pixelsPerSecond}px`,
+                    width: `${Math.max(clipWidth, minWidth)}px`,
                   }}
                   onMouseDown={(e) => handleClipMouseDown(e, clip.id)}
                   onClick={(e) => {
@@ -196,8 +199,12 @@ export default function Timeline({
                   }}
                 >
                   <div className="relative flex h-full flex-col justify-center bg-primary/80 px-2 hover:bg-primary">
-                    <span className="truncate text-xs font-medium text-primary-foreground">{clip.name}</span>
-                    <span className="text-xs text-primary-foreground/70">{visualDuration.toFixed(1)}s</span>
+                    {showText && (
+                      <>
+                        <span className="truncate text-xs font-medium text-primary-foreground">{clip.name}</span>
+                        <span className="text-xs text-primary-foreground/70">{visualDuration.toFixed(1)}s</span>
+                      </>
+                    )}
                   </div>
 
                   <div
