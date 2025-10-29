@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Maximize, Minimize } from "lucide-react"
-import type { VideoClip } from "./video-editor"
+import type { VideoClip } from "@/components/types"
+import { getCurrentWindow } from "@tauri-apps/api/window"
 
 interface VideoPreviewProps {
   clips: VideoClip[]
@@ -83,15 +84,41 @@ export default function VideoPreview({
     }
   }, [currentTime, clips, activeClipId, isPlaying])
 
-  const toggleFullscreen = () => {
-    if (!containerRef.current) return
+  const toggleFullscreen = async () => {
+    try {
+      // Try Tauri window API first (for desktop app)
+      const appWindow = getCurrentWindow()
+      const isCurrentlyFullscreen = await appWindow.isFullscreen()
+      await appWindow.setFullscreen(!isCurrentlyFullscreen)
+      setIsFullscreen(!isCurrentlyFullscreen)
+    } catch (error) {
+      // Fallback to web fullscreen API (for browser)
+      if (!containerRef.current) return
 
-    if (!document.fullscreenElement) {
-      containerRef.current.requestFullscreen()
-      setIsFullscreen(true)
-    } else {
-      document.exitFullscreen()
-      setIsFullscreen(false)
+      const elem = containerRef.current as any
+      const requestFullscreen = elem.requestFullscreen ||
+                                elem.webkitRequestFullscreen ||
+                                elem.mozRequestFullScreen ||
+                                elem.msRequestFullscreen
+
+      if (!requestFullscreen) {
+        console.warn('Fullscreen API not supported in this environment')
+        return
+      }
+
+      if (!document.fullscreenElement) {
+        requestFullscreen.call(elem)
+        setIsFullscreen(true)
+      } else {
+        const exitFullscreen = (document as any).exitFullscreen ||
+                              (document as any).webkitExitFullscreen ||
+                              (document as any).mozCancelFullScreen ||
+                              (document as any).msExitFullscreen
+        if (exitFullscreen) {
+          exitFullscreen.call(document)
+        }
+        setIsFullscreen(false)
+      }
     }
   }
 
@@ -100,8 +127,29 @@ export default function VideoPreview({
       setIsFullscreen(!!document.fullscreenElement)
     }
 
+    // Listen for web fullscreen changes
     document.addEventListener("fullscreenchange", handleFullscreenChange)
-    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange)
+
+    // Also listen for Tauri window fullscreen changes
+    let unlisten: (() => void) | undefined
+    const setupTauriListener = async () => {
+      try {
+        const appWindow = getCurrentWindow()
+        unlisten = await appWindow.onResized(async () => {
+          const isFullscreen = await appWindow.isFullscreen()
+          setIsFullscreen(isFullscreen)
+        })
+      } catch (error) {
+        // Not in Tauri environment, ignore
+      }
+    }
+
+    setupTauriListener()
+
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFullscreenChange)
+      if (unlisten) unlisten()
+    }
   }, [])
 
   return (

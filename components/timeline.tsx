@@ -7,6 +7,7 @@ import type { VideoClip } from "@/components/types"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { ZoomIn, ZoomOut, Maximize2 } from "lucide-react"
+import { Selectable } from "@/components/selectable"
 
 interface TimelineProps {
   clips: VideoClip[]
@@ -131,15 +132,36 @@ export default function Timeline({
         <div className="flex items-center justify-between border-b border-border bg-card px-4 py-2">
           <h3 className="text-sm font-medium">Timeline</h3>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onZoomOut} title="Zoom Out">
-              <ZoomOut className="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onZoomToFit} title="Zoom to Fit">
-              <Maximize2 className="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onZoomIn} title="Zoom In">
-              <ZoomIn className="h-4 w-4" />
-            </Button>
+            <Selectable
+              id="timeline-zoom-out-button"
+              name="Timeline Zoom Out Button"
+              type="button"
+              description="Zoom out on the timeline"
+            >
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onZoomOut} title="Zoom Out">
+                <ZoomOut className="h-4 w-4" />
+              </Button>
+            </Selectable>
+            <Selectable
+              id="timeline-zoom-to-fit-button"
+              name="Timeline Zoom to Fit Button"
+              type="button"
+              description="Zoom timeline to fit all clips"
+            >
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onZoomToFit} title="Zoom to Fit">
+                <Maximize2 className="h-4 w-4" />
+              </Button>
+            </Selectable>
+            <Selectable
+              id="timeline-zoom-in-button"
+              name="Timeline Zoom In Button"
+              type="button"
+              description="Zoom in on the timeline"
+            >
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onZoomIn} title="Zoom In">
+                <ZoomIn className="h-4 w-4" />
+              </Button>
+            </Selectable>
             <div className="mx-2 h-4 w-px bg-border" />
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <span>

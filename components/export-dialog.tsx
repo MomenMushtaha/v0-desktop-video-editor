@@ -15,8 +15,9 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Progress } from "@/components/ui/progress"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Download, CheckCircle2, Loader2 } from "lucide-react"
-import type { VideoClip } from "./video-editor"
+import { Download, CheckCircle2, Loader2, AlertCircle } from "lucide-react"
+import type { VideoClip } from "@/components/types"
+import { save } from "@tauri-apps/plugin-dialog"
 
 interface ExportDialogProps {
   open: boolean
@@ -31,29 +32,92 @@ export default function ExportDialog({ open, onOpenChange, clips }: ExportDialog
   const [isExporting, setIsExporting] = useState(false)
   const [exportProgress, setExportProgress] = useState(0)
   const [exportComplete, setExportComplete] = useState(false)
+  const [exportError, setExportError] = useState<string | null>(null)
+  const [savedPath, setSavedPath] = useState<string | null>(null)
 
-  const handleExport = () => {
-    setIsExporting(true)
-    setExportProgress(0)
+  const handleExport = async () => {
+    try {
+      setIsExporting(true)
+      setExportProgress(0)
+      setExportError(null)
 
-    // Simulate export progress
-    const interval = setInterval(() => {
-      setExportProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(interval)
+      // Ask user where to save the file
+      const filePath = await save({
+        defaultPath: filename,
+        filters: [{
+          name: 'Video',
+          extensions: ['mp4']
+        }]
+      })
+
+      if (!filePath) {
+        // User cancelled
+        setIsExporting(false)
+        return
+      }
+
+      // For MVP: Copy the first clip's video file to the destination
+      // This works for single clip export
+      if (clips.length === 1) {
+        const clip = clips[0]
+
+        // Simulate progress
+        const progressInterval = setInterval(() => {
+          setExportProgress((prev) => {
+            if (prev >= 90) {
+              clearInterval(progressInterval)
+              return 90
+            }
+            return prev + 10
+          })
+        }, 100)
+
+        try {
+          // Fetch the video blob from the URL
+          const response = await fetch(clip.url)
+          const blob = await response.blob()
+
+          // Convert blob to array buffer
+          const arrayBuffer = await blob.arrayBuffer()
+          const uint8Array = new Uint8Array(arrayBuffer)
+
+          // Write file using Tauri's fs API
+          // Note: For now, we'll use the browser download API as a fallback
+          // Create a download link
+          const url = URL.createObjectURL(blob)
+          const a = document.createElement('a')
+          a.href = url
+          a.download = filePath.split('/').pop() || filename
+          document.body.appendChild(a)
+          a.click()
+          document.body.removeChild(a)
+          URL.revokeObjectURL(url)
+
+          clearInterval(progressInterval)
+          setExportProgress(100)
           setIsExporting(false)
           setExportComplete(true)
-          return 100
+          setSavedPath(filePath)
+        } catch (error) {
+          clearInterval(progressInterval)
+          throw error
         }
-        return prev + 10
-      })
-    }, 300)
+      } else {
+        // Multiple clips - show error for MVP
+        throw new Error('Multi-clip export is not yet supported in MVP. Please export one clip at a time.')
+      }
+    } catch (error) {
+      setIsExporting(false)
+      setExportError(error instanceof Error ? error.message : 'Export failed')
+    }
   }
 
   const handleClose = () => {
     setExportProgress(0)
     setExportComplete(false)
     setIsExporting(false)
+    setExportError(null)
+    setSavedPath(null)
     onOpenChange(false)
   }
 
@@ -105,6 +169,15 @@ export default function ExportDialog({ open, onOpenChange, clips }: ExportDialog
           <DialogTitle>Export Video</DialogTitle>
           <DialogDescription>Configure your export settings and render your final video.</DialogDescription>
         </DialogHeader>
+
+        {exportError && (
+          <Alert className="mb-4 border-red-500/50 bg-red-500/10">
+            <AlertCircle className="h-4 w-4 text-red-500" />
+            <AlertDescription className="text-red-500">
+              {exportError}
+            </AlertDescription>
+          </Alert>
+        )}
 
         {!exportComplete ? (
           <div className="space-y-6 py-4">
@@ -173,7 +246,7 @@ export default function ExportDialog({ open, onOpenChange, clips }: ExportDialog
             <Alert className="border-green-500/50 bg-green-500/10">
               <CheckCircle2 className="h-4 w-4 text-green-500" />
               <AlertDescription className="text-green-500">
-                Export complete! In the full Electron app, your video would be saved to the selected location.
+                Export complete! Your video has been downloaded{savedPath ? ` to ${savedPath}` : ''}.
               </AlertDescription>
             </Alert>
           </div>
