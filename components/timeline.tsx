@@ -41,6 +41,7 @@ export default function Timeline({
   const timelineRef = useRef<HTMLDivElement>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [draggedClipId, setDraggedClipId] = useState<string | null>(null)
+  const [isDraggingPlayhead, setIsDraggingPlayhead] = useState(false)
   const [trimDragState, setTrimDragState] = useState<{
     clipId: string
     handle: "start" | "end"
@@ -102,7 +103,15 @@ export default function Timeline({
       return
     }
 
+    if (isDraggingPlayhead) {
+      // Dragging playhead - update time immediately
+      const time = x / pixelsPerSecond
+      onTimeUpdate(Math.max(0, Math.min(time, duration)))
+      return
+    }
+
     if (isDragging && draggedClipId) {
+      // Dragging clip - update position
       const newStartTime = Math.max(0, x / pixelsPerSecond)
       onClipsUpdate(clips.map((clip) => (clip.id === draggedClipId ? { ...clip, startTime: newStartTime } : clip)))
     }
@@ -111,11 +120,12 @@ export default function Timeline({
   const handleMouseUp = () => {
     setIsDragging(false)
     setDraggedClipId(null)
+    setIsDraggingPlayhead(false)
     setTrimDragState(null)
   }
 
   useEffect(() => {
-    if (isDragging || trimDragState) {
+    if (isDragging || isDraggingPlayhead || trimDragState) {
       window.addEventListener("mousemove", handleMouseMove)
       window.addEventListener("mouseup", handleMouseUp)
       return () => {
@@ -123,7 +133,7 @@ export default function Timeline({
         window.removeEventListener("mouseup", handleMouseUp)
       }
     }
-  }, [isDragging, draggedClipId, trimDragState, clips])
+  }, [isDragging, isDraggingPlayhead, draggedClipId, trimDragState, clips])
 
   return (
     <div className="h-64 border-t border-border bg-[var(--color-timeline-bg)]">
@@ -202,13 +212,16 @@ export default function Timeline({
               const clipWidth = visualDuration * pixelsPerSecond
               const minWidth = 20
               const showText = clipWidth >= 80
+              const isSelected = selectedClipId === clip.id
 
               return (
                 <div
                   key={clip.id}
                   className={cn(
-                    "absolute top-2 h-16 cursor-move overflow-hidden rounded border-2 transition-all",
-                    selectedClipId === clip.id ? "border-primary ring-2 ring-primary/50" : "border-primary/50",
+                    "absolute top-2 h-16 cursor-move overflow-hidden rounded-lg transition-all group",
+                    isSelected
+                      ? "ring-2 ring-blue-500 shadow-lg shadow-blue-500/20"
+                      : "shadow-md hover:shadow-lg"
                   )}
                   style={{
                     left: `${clip.startTime * pixelsPerSecond}px`,
@@ -220,22 +233,45 @@ export default function Timeline({
                     onClipSelect(clip.id)
                   }}
                 >
-                  <div className="relative flex h-full flex-col justify-center bg-primary/80 px-2 hover:bg-primary">
-                    {showText && (
-                      <>
-                        <span className="truncate text-xs font-medium text-primary-foreground">{clip.name}</span>
-                        <span className="text-xs text-primary-foreground/70">{visualDuration.toFixed(1)}s</span>
-                      </>
-                    )}
+                  {/* Gradient background */}
+                  <div className={cn(
+                    "relative flex h-full flex-col justify-center px-3 transition-all",
+                    isSelected
+                      ? "bg-gradient-to-r from-blue-600 to-blue-500"
+                      : "bg-gradient-to-r from-blue-600/90 to-blue-500/90 group-hover:from-blue-600 group-hover:to-blue-500"
+                  )}>
+                    {/* Subtle pattern overlay */}
+                    <div className="absolute inset-0 opacity-10" style={{
+                      backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,255,255,0.1) 10px, rgba(255,255,255,0.1) 20px)'
+                    }} />
+
+                    {/* Content */}
+                    <div className="relative z-10">
+                      {showText && (
+                        <>
+                          <span className="truncate text-xs font-semibold text-white drop-shadow-sm">{clip.name}</span>
+                          <span className="text-xs text-white/80 font-medium">{visualDuration.toFixed(1)}s</span>
+                        </>
+                      )}
+                    </div>
                   </div>
 
+                  {/* Trim handles with improved design */}
                   <div
-                    className="absolute left-0 top-0 h-full w-2 cursor-ew-resize bg-primary-foreground/30 hover:bg-primary-foreground/50"
+                    className={cn(
+                      "absolute left-0 top-0 h-full w-1.5 cursor-ew-resize transition-all",
+                      "bg-white/40 hover:bg-white/70 hover:w-2",
+                      isSelected && "bg-white/60"
+                    )}
                     onMouseDown={(e) => handleTrimHandleMouseDown(e, clip.id, "start", clip)}
                     title="Drag to trim start"
                   />
                   <div
-                    className="absolute right-0 top-0 h-full w-2 cursor-ew-resize bg-primary-foreground/30 hover:bg-primary-foreground/50"
+                    className={cn(
+                      "absolute right-0 top-0 h-full w-1.5 cursor-ew-resize transition-all",
+                      "bg-white/40 hover:bg-white/70 hover:w-2",
+                      isSelected && "bg-white/60"
+                    )}
                     onMouseDown={(e) => handleTrimHandleMouseDown(e, clip.id, "end", clip)}
                     title="Drag to trim end"
                   />
@@ -243,13 +279,34 @@ export default function Timeline({
               )
             })}
 
-            {/* Playhead */}
+            {/* Playhead with improved UI */}
             <div
-              className="absolute top-0 h-full w-0.5 bg-[var(--color-playhead)] shadow-lg"
-              style={{ left: `${currentTime * pixelsPerSecond}px` }}
+              className="absolute top-0 h-full flex items-center pointer-events-none z-20"
+              style={{ left: `${currentTime * pixelsPerSecond}px`, transform: 'translateX(-50%)' }}
             >
-              <div className="absolute -top-1 left-1/2 h-3 w-3 -translate-x-1/2 rounded-full bg-[var(--color-playhead)]" />
+              {/* Playhead indicator */}
+              <div className="flex flex-col items-center h-full pointer-events-auto cursor-ew-resize group"
+                onMouseDown={(e) => {
+                  e.stopPropagation()
+                  setIsDraggingPlayhead(true)
+                }}
+              >
+                {/* Circle handle at top */}
+                <div className="w-4 h-4 rounded-full bg-[var(--color-playhead)] group-hover:bg-[var(--color-playhead)]/80 group-hover:scale-110 transition-all shadow-md border-2 border-background flex-shrink-0" />
+                {/* Vertical line */}
+                <div className="w-[3px] flex-1 bg-[var(--color-playhead)] group-hover:bg-[var(--color-playhead)]/80 group-hover:w-[4px] transition-all shadow-lg" />
+              </div>
             </div>
+            {/* Playhead Hit Area - larger clickable/draggable region */}
+            <div
+              className="absolute top-0 h-full w-10 cursor-ew-resize z-20"
+              style={{ left: `${currentTime * pixelsPerSecond - 20}px` }}
+              onMouseDown={(e) => {
+                e.stopPropagation()
+                setIsDraggingPlayhead(true)
+              }}
+              title="Drag to scrub timeline"
+            />
           </div>
         </div>
       </div>

@@ -2,18 +2,17 @@
 
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
-import { Scissors, Copy, Trash2, RotateCcw, RotateCw, ZoomIn, ZoomOut, Layers } from "lucide-react"
+import { Scissors, Copy, Trash2, RotateCcw, RotateCw } from "lucide-react"
 import { Selectable } from "@/components/selectable"
 
 interface ToolbarProps {
   onSplit: () => void
+  onCopy: () => void | Promise<void>
+  onDelete: () => void | Promise<void>
   selectedClipId: string | null
-  onZoomIn?: () => void
-  onZoomOut?: () => void
-  onToggleLayers?: () => void
 }
 
-export default function Toolbar({ onSplit, selectedClipId, onZoomIn, onZoomOut, onToggleLayers }: ToolbarProps) {
+export default function Toolbar({ onSplit, onCopy, onDelete, selectedClipId }: ToolbarProps) {
   return (
     <div className="flex w-16 flex-col items-center gap-2 border-r border-border bg-card py-4">
       <Selectable
@@ -33,7 +32,15 @@ export default function Toolbar({ onSplit, selectedClipId, onZoomIn, onZoomOut, 
         type="button"
         description="Copy the selected clip"
       >
-        <Button variant="ghost" size="icon" disabled={!selectedClipId} title="Copy clip">
+        <Button
+          variant="ghost"
+          size="icon"
+          disabled={!selectedClipId}
+          title="Copy clip (Cmd+C)"
+          onClick={() => {
+            void onCopy()
+          }}
+        >
           <Copy className="h-5 w-5" />
         </Button>
       </Selectable>
@@ -44,7 +51,15 @@ export default function Toolbar({ onSplit, selectedClipId, onZoomIn, onZoomOut, 
         type="button"
         description="Delete the selected clip from the timeline"
       >
-        <Button variant="ghost" size="icon" disabled={!selectedClipId} title="Delete clip">
+        <Button
+          variant="ghost"
+          size="icon"
+          disabled={!selectedClipId}
+          title="Delete clip (Backspace)"
+          onClick={() => {
+            void onDelete()
+          }}
+        >
           <Trash2 className="h-5 w-5" />
         </Button>
       </Selectable>
@@ -73,40 +88,6 @@ export default function Toolbar({ onSplit, selectedClipId, onZoomIn, onZoomOut, 
         </Button>
       </Selectable>
 
-      <Separator className="my-2 w-8" />
-
-      <Selectable
-        id="zoom-in-button"
-        name="Zoom In Button"
-        type="button"
-        description="Zoom in on the timeline"
-      >
-        <Button variant="ghost" size="icon" onClick={onZoomIn} title="Zoom in">
-          <ZoomIn className="h-5 w-5" />
-        </Button>
-      </Selectable>
-
-      <Selectable
-        id="zoom-out-button"
-        name="Zoom Out Button"
-        type="button"
-        description="Zoom out on the timeline"
-      >
-        <Button variant="ghost" size="icon" onClick={onZoomOut} title="Zoom out">
-          <ZoomOut className="h-5 w-5" />
-        </Button>
-      </Selectable>
-
-      <Selectable
-        id="layers-button"
-        name="Layers Button"
-        type="button"
-        description="Toggle layers panel"
-      >
-        <Button variant="ghost" size="icon" onClick={onToggleLayers} title="Layers">
-          <Layers className="h-5 w-5" />
-        </Button>
-      </Selectable>
     </div>
   )
 }

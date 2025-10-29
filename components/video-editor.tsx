@@ -49,7 +49,7 @@ export default function VideoEditor() {
   const [exportDialogOpen, setExportDialogOpen] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
   const [zoom, setZoom] = useState(50)
-  const [showLayers, setShowLayers] = useState(false)
+  const [copiedClip, setCopiedClip] = useState<VideoClip | null>(null)
 
   const resetEditorState = (reason: string) => {
     setClips([])
@@ -278,10 +278,6 @@ export default function VideoEditor() {
     setZoom(Math.max(30, Math.min(newZoom, 200)))
   }
 
-  const handleToggleLayers = () => {
-    setShowLayers((prev) => !prev)
-  }
-
   const handlePlayPause = () => {
     setIsPlaying(!isPlaying)
   }
@@ -309,6 +305,76 @@ export default function VideoEditor() {
       setIsPlaying(false)
     }
   }, [clips, selectedClipId])
+
+  const handleCopyClip = useCallback(async () => {
+    try {
+      if (!selectedClipId) {
+        console.log("[ClipForge] No clip selected for copying")
+        return
+      }
+
+      const clip = clips.find((c) => c.id === selectedClipId)
+      if (!clip) {
+        await reportErrorToClaude("Selected clip not found in state", "Copy Clip")
+        return
+      }
+
+      setCopiedClip(clip)
+      void observer.trackInfo(`Copied clip: ${clip.name}`)
+      await reportInfoToClaude(`Copied clip "${clip.name}"`, "Copy Clip")
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error)
+      await reportErrorToClaude(errorMsg, "Copy Clip")
+    }
+  }, [selectedClipId, clips, observer])
+
+  const handleDeleteClip = useCallback(async () => {
+    try {
+      if (!selectedClipId) {
+        console.log("[ClipForge] No clip selected for deletion")
+        return
+      }
+
+      const clipIndex = clips.findIndex((c) => c.id === selectedClipId)
+      if (clipIndex === -1) {
+        await reportErrorToClaude("Selected clip not found in state", "Delete Clip")
+        return
+      }
+
+      const clipToRemove = clips[clipIndex]
+      const durationToRemove = clipToRemove.duration
+      const nextClipId = clips[clipIndex + 1]?.id ?? clips[clipIndex - 1]?.id ?? null
+
+      setClips((prev) => {
+        const index = prev.findIndex((c) => c.id === selectedClipId)
+        if (index === -1) return prev
+        const removedDuration = prev[index].duration
+        const before = prev.slice(0, index)
+        const after = prev.slice(index + 1).map((clip) => ({
+          ...clip,
+          startTime: clip.startTime - removedDuration,
+        }))
+        return [...before, ...after]
+      })
+
+      setDuration((prev) => Math.max(0, prev - durationToRemove))
+      setCurrentTime((prev) => {
+        if (prev < clipToRemove.startTime) return prev
+        if (prev >= clipToRemove.startTime + clipToRemove.duration) {
+          return Math.max(0, prev - clipToRemove.duration)
+        }
+        return clipToRemove.startTime
+      })
+      setSelectedClipId(nextClipId)
+      setIsPlaying(false)
+
+      void observer.trackInfo(`Deleted clip: ${clipToRemove.name}`)
+      await reportInfoToClaude(`Deleted clip "${clipToRemove.name}"`, "Delete Clip")
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error)
+      await reportErrorToClaude(errorMsg, "Delete Clip")
+    }
+  }, [selectedClipId, clips, observer])
 
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
@@ -338,11 +404,19 @@ export default function VideoEditor() {
         e.preventDefault()
         handleSetOutPoint()
       }
+      if (e.code === "KeyC" && (e.ctrlKey || e.metaKey) && !isTyping) {
+        e.preventDefault()
+        void handleCopyClip()
+      }
+      if ((e.key === "Backspace" || e.key === "Delete") && !isTyping) {
+        e.preventDefault()
+        void handleDeleteClip()
+      }
     }
 
     window.addEventListener("keydown", handleKeyPress)
     return () => window.removeEventListener("keydown", handleKeyPress)
-  }, [duration, selectedClipId, currentTime, clips, handlePreviousClip, handleNextClip])
+  }, [duration, selectedClipId, currentTime, clips, handlePreviousClip, handleNextClip, handleCopyClip, handleDeleteClip])
 
   const handleSkipBackward = () => {
     setCurrentTime((prev) => Math.max(0, prev - 5))
@@ -664,10 +738,9 @@ export default function VideoEditor() {
       <div className="flex flex-1 overflow-hidden">
         <Toolbar
           onSplit={handleSplitClip}
+          onCopy={handleCopyClip}
+          onDelete={handleDeleteClip}
           selectedClipId={selectedClipId}
-          onZoomIn={handleZoomIn}
-          onZoomOut={handleZoomOut}
-          onToggleLayers={handleToggleLayers}
         />
 
         <div className="flex flex-1 flex-col overflow-hidden">
