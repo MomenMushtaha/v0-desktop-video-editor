@@ -2,7 +2,7 @@
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "ClipForge",
   "version": "0.1.0",
-  "identifier": "com.tauri.dev",
+  "identifier": "com.clipforge.app",
   "build": {
     "frontendDist": "../out",
     "devUrl": "http://localhost:3000",
@@ -22,7 +22,25 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": null,
+      "assetProtocol": {
+        "enable": true,
+        "scope": ["**"]
+      },
+      "capabilities": [
+        {
+          "identifier": "main-capability",
+          "description": "Main window capabilities",
+          "windows": ["main"],
+          "permissions": [
+            "core:default",
+            "shell:default",
+            "dialog:default",
+            "dialog:allow-open",
+            "dialog:allow-save"
+          ]
+        }
+      ]
     }
   },
   "bundle": {
